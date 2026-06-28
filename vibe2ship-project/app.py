@@ -1,7 +1,6 @@
 import streamlit as st
 import os
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 st.set_page_config(
     page_title="The Last-Minute Life Saver",
@@ -12,19 +11,19 @@ st.set_page_config(
 st.title("⏰ The Last-Minute Life Saver")
 st.caption("An AI-powered active productivity companion built for Vibe2Ship.")
 
-api_key = os.getenv("GEMINI_API_KEY")
+# Look for API Key in Streamlit Secrets first, then environment variables
+api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
 if not api_key:
     with st.sidebar:
         st.subheader("Configuration")
         api_key = st.text_input("Enter your Gemini API Key:", type="password")
-        if api_key:
-            os.environ["GEMINI_API_KEY"] = api_key
 
 if not api_key:
-    st.info("Please provide your Gemini API key in the sidebar or set it as an Environment Variable to begin.", icon="🔑")
+    st.info("Please provide your Gemini API key in the sidebar or add it to Advanced Settings -> Secrets to begin.", icon="🔑")
 else:
-    client = genai.Client()
+    # Configure the stable generative AI client
+    genai.configure(api_key=api_key)
 
     st.markdown("### Tell me what you need to do, when it's due, and your energy level:")
     raw_user_tasks = st.text_area(
@@ -49,13 +48,15 @@ else:
                         "4. End with a motivational, high-clarity recommendation."
                     )
 
-                    response = client.models.generate_content(
-                        model='gemini-2.0-flash',
-                        contents=raw_user_tasks,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                            temperature=0.3,
-                        )
+                    # Initialize the highly stable Gemini 1.5 Flash model
+                    model = genai.GenerativeModel(
+                        model_name='gemini-1.5-flash',
+                        system_instruction=system_instruction
+                    )
+
+                    response = model.generate_content(
+                        raw_user_tasks,
+                        generation_config={"temperature": 0.3}
                     )
 
                     st.success("Plan Formulated!")
